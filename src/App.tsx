@@ -458,6 +458,32 @@ function App() {
             padding: 6px;
           }
 
+          .editable-cell {
+            display: block;
+            width: 100%;
+            min-width: 0;
+            min-height: 70px;
+            height: auto;
+            padding: 0;
+            margin: 0;
+            border: none !important;
+            outline: none;
+            background: transparent !important;
+            color: #000 !important;
+            font: inherit;
+            line-height: 1.35;
+            resize: none;
+            overflow: visible;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+
+          .process-table tr {
+            break-inside: avoid;
+          }
+
           @page {
             size: A4 portrait;
             margin: 10mm;
