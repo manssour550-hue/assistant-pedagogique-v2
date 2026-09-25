@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import {
   class6e,
   type Domain,
-  type Activity,
   type LearningSituation,
   type SequenceData,
   type LessonData,
@@ -112,21 +111,6 @@ function App() {
     window.print();
   };
 
-  const activityAnswers = (activity: Activity) => {
-    if (activity.expectedAnswers && activity.expectedAnswers.length > 0) {
-      return activity.expectedAnswers.join(" ");
-    }
-
-    return "À compléter / adapter par l'enseignant.";
-  };
-
-  const activityObservations = (activity: Activity) => {
-    if (activity.observations && activity.observations.length > 0) {
-      return activity.observations.join(" ");
-    }
-
-    return "À compléter par l'enseignant.";
-  };
 
   return (
     <>
@@ -803,11 +787,21 @@ function App() {
                           </td>
 
                           <td>
-                            {activity.teacher}
+                            <textarea
+                              className="editable-cell"
+                              defaultValue={activity.teacher}
+                              rows={4}
+                              aria-label="Teaching process"
+                            />
                           </td>
 
                           <td>
-                            {activity.learner}
+                            <textarea
+                              className="editable-cell"
+                              defaultValue={activity.learner}
+                              rows={4}
+                              aria-label="Learning process"
+                            />
                           </td>
 
                           <td>
@@ -827,11 +821,21 @@ function App() {
                           </td>
 
                           <td>
-                            {activityAnswers(activity)}
+                            <textarea
+                              className="editable-cell"
+                              defaultValue={activity.expectedAnswers?.join("\n") || ""}
+                              rows={4}
+                              aria-label="Suggested answers"
+                            />
                           </td>
 
                           <td>
-                            {activityObservations(activity)}
+                            <textarea
+                              className="editable-cell"
+                              defaultValue={activity.observations?.join("\n") || ""}
+                              rows={4}
+                              aria-label="Observations"
+                            />
                           </td>
                         </tr>
                       ))}
