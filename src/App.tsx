@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   class6e,
   type Domain,
+  type Activity,
   type LearningSituation,
   type SequenceData,
   type LessonData,
@@ -36,6 +37,7 @@ function App() {
     new Date().toISOString().split("T")[0]
   );
   const [generated, setGenerated] = useState(false);
+  const [editedActivities, setEditedActivities] = useState<Activity[]>([]);
 
   const learningSituation: LearningSituation | undefined = useMemo(
     () => class6e.learningSituations.find((item) => item.id === selectedLS),
@@ -97,7 +99,18 @@ function App() {
     Boolean(selectedNotion);
 
   const generate = () => {
-    if (!canGenerate) return;
+    if (!canGenerate || !lesson) return;
+
+    setEditedActivities(
+      lesson.activities.map((activity) => ({
+        ...activity,
+        strategies: [...activity.strategies],
+        competences: [...activity.competences],
+        expectedAnswers: [...(activity.expectedAnswers ?? [])],
+        observations: [...(activity.observations ?? [])],
+      }))
+    );
+
     setGenerated(true);
 
     setTimeout(() => {
@@ -704,7 +717,7 @@ function App() {
                       <td>
                         {Array.from(
                           new Set(
-                            lesson.activities.flatMap(
+                            editedActivities.flatMap(
                               (activity) => activity.competences
                             )
                           )
@@ -728,7 +741,7 @@ function App() {
                       <td>
                         {Array.from(
                           new Set(
-                            lesson.activities.flatMap(
+                            editedActivities.flatMap(
                               (activity) => activity.strategies
                             )
                           )
@@ -778,7 +791,7 @@ function App() {
                     </thead>
 
                     <tbody>
-                      {lesson.activities.map((activity, index) => (
+                      {editedActivities.map((activity, index) => (
                         <tr key={`${activity.title}-${index}`}>
                           <td>
                             <div className="activity-title">
@@ -789,7 +802,16 @@ function App() {
                           <td>
                             <textarea
                               className="editable-cell"
-                              defaultValue={activity.teacher}
+                              value={activity.teacher}
+                              onChange={(e) =>
+                                setEditedActivities((prev) =>
+                                  prev.map((item, i) =>
+                                    i === index
+                                      ? { ...item, teacher: e.target.value }
+                                      : item
+                                  )
+                                )
+                              }
                               rows={4}
                               aria-label="Teaching process"
                             />
@@ -798,7 +820,16 @@ function App() {
                           <td>
                             <textarea
                               className="editable-cell"
-                              defaultValue={activity.learner}
+                              value={activity.learner}
+                              onChange={(e) =>
+                                setEditedActivities((prev) =>
+                                  prev.map((item, i) =>
+                                    i === index
+                                      ? { ...item, learner: e.target.value }
+                                      : item
+                                  )
+                                )
+                              }
                               rows={4}
                               aria-label="Learning process"
                             />
@@ -823,7 +854,21 @@ function App() {
                           <td>
                             <textarea
                               className="editable-cell"
-                              defaultValue={activity.expectedAnswers?.join("\n") || ""}
+                              value={activity.expectedAnswers?.join("\n") || ""}
+                              onChange={(e) =>
+                                setEditedActivities((prev) =>
+                                  prev.map((item, i) =>
+                                    i === index
+                                      ? {
+                                          ...item,
+                                          expectedAnswers: e.target.value
+                                            .split("\n")
+                                            .filter((line) => line.trim()),
+                                        }
+                                      : item
+                                  )
+                                )
+                              }
                               rows={4}
                               aria-label="Suggested answers"
                             />
@@ -832,7 +877,21 @@ function App() {
                           <td>
                             <textarea
                               className="editable-cell"
-                              defaultValue={activity.observations?.join("\n") || ""}
+                              value={activity.observations?.join("\n") || ""}
+                              onChange={(e) =>
+                                setEditedActivities((prev) =>
+                                  prev.map((item, i) =>
+                                    i === index
+                                      ? {
+                                          ...item,
+                                          observations: e.target.value
+                                            .split("\n")
+                                            .filter((line) => line.trim()),
+                                        }
+                                      : item
+                                  )
+                                )
+                              }
                               rows={4}
                               aria-label="Observations"
                             />
@@ -846,12 +905,12 @@ function App() {
                 <div className="subsection">
                   <h3>RÉPONSES ATTENDUES</h3>
                   <div className="box">
-                    {lesson.activities.some(
+                    {editedActivities.some(
                       (activity) =>
                         activity.expectedAnswers &&
                         activity.expectedAnswers.length > 0
                     )
-                      ? lesson.activities
+                      ? editedActivities
                           .filter(
                             (activity) =>
                               activity.expectedAnswers &&
@@ -871,12 +930,12 @@ function App() {
                 <div className="subsection">
                   <h3>OBSERVATIONS</h3>
                   <div className="box">
-                    {lesson.activities.some(
+                    {editedActivities.some(
                       (activity) =>
                         activity.observations &&
                         activity.observations.length > 0
                     )
-                      ? lesson.activities
+                      ? editedActivities
                           .filter(
                             (activity) =>
                               activity.observations &&
