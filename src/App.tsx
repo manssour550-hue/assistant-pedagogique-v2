@@ -7,6 +7,8 @@ import {
   type SequenceData,
   type LessonData,
 } from "./data/curriculum6e";
+import type { AIFicheRequest } from "./types/ai";
+import { generateFiche } from "./services/aiService";
 
 const domainLabels: Record<Domain, string> = {
   Vocabulary: "Vocabulaire",
@@ -37,7 +39,12 @@ function App() {
     new Date().toISOString().split("T")[0]
   );
   const [generated, setGenerated] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
   const [editedActivities, setEditedActivities] = useState<Activity[]>([]);
+  const [courseText, setCourseText] = useState("");
+  const [activityImages, setActivityImages] = useState<File[]>([]);
+  const [teacherInstruction, setTeacherInstruction] = useState("");
 
   const learningSituation: LearningSituation | undefined = useMemo(
     () => class6e.learningSituations.find((item) => item.id === selectedLS),
@@ -98,27 +105,95 @@ function App() {
     Boolean(selectedDomain) &&
     Boolean(selectedNotion);
 
-  const generate = () => {
-    if (!canGenerate || !lesson) return;
-
-    setEditedActivities(
-      lesson.activities.map((activity) => ({
-        ...activity,
-        strategies: [...activity.strategies],
-        competences: [...activity.competences],
-        expectedAnswers: [...(activity.expectedAnswers ?? [])],
-        observations: [...(activity.observations ?? [])],
-      }))
-    );
-
-    setGenerated(true);
-
-    setTimeout(() => {
-      document
-        .getElementById("fiche")
-        ?.scrollIntoView({ behavior: "smooth" });
-    }, 50);
+  const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
+
+
+  const buildAIRequest = async (): Promise<AIFicheRequest | null> => {
+    if (!learningSituation || !sequence || !lesson || !selectedDomain || !selectedNotion) {
+      return null;
+    }
+
+    return {
+      className: class6e.title,
+      subject: class6e.subject,
+      learningSituation: learningSituation.title,
+      sequence: sequence.title,
+      lesson: lesson.title,
+      domain: selectedDomain,
+      notion: selectedNotion,
+      teacher: teacher.trim(),
+      school: school.trim(),
+      date,
+      courseText: courseText.trim(),
+      activityImages: await Promise.all(
+        activityImages.map(async (file) => ({
+          name: file.name,
+          type: file.type,
+          dataUrl: await fileToDataUrl(file),
+        }))
+      ),
+      teacherInstruction: teacherInstruction.trim(),
+    };
+  };
+
+
+  const generate = async () => {
+    setAiLoading(true);
+    setAiError("");
+
+    try {
+      const aiRequest = await buildAIRequest();
+
+      if (!aiRequest || !canGenerate || !lesson) {
+        setAiLoading(false);
+        return;
+      }
+
+      console.log("Demande IA envoyée :", aiRequest);
+
+      const aiResponse = await generateFiche(aiRequest);
+
+      console.log("Réponse du backend :", aiResponse);
+
+      setEditedActivities(
+        aiResponse.activities.map((activity) => ({
+          title: activity.title,
+          teacher: activity.teacher,
+          learner: activity.learner,
+          strategies: [...activity.strategies],
+          competences: [...activity.competences],
+          expectedAnswers: [...activity.expectedAnswers],
+          observations: [...activity.observations],
+        }))
+      );
+
+      setGenerated(true);
+
+      setTimeout(() => {
+        document
+          .getElementById("fiche")
+          ?.scrollIntoView({ behavior: "smooth" });
+      }, 50);
+    } catch (error) {
+      console.error("Erreur lors de la génération :", error);
+
+      setAiError(
+        error instanceof Error
+          ? error.message
+          : "Une erreur est survenue lors de la préparation de la fiche."
+      );
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
 
   const printFiche = () => {
     window.print();
@@ -458,32 +533,6 @@ function App() {
             padding: 6px;
           }
 
-          .editable-cell {
-            display: block;
-            width: 100%;
-            min-width: 0;
-            min-height: 70px;
-            height: auto;
-            padding: 0;
-            margin: 0;
-            border: none !important;
-            outline: none;
-            background: transparent !important;
-            color: #000 !important;
-            font: inherit;
-            line-height: 1.35;
-            resize: none;
-            overflow: visible;
-            white-space: pre-wrap;
-            overflow-wrap: anywhere;
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
-          }
-
-          .process-table tr {
-            break-inside: avoid;
-          }
-
           @page {
             size: A4 portrait;
             margin: 10mm;
@@ -629,16 +678,61 @@ function App() {
               </div>
             </div>
 
+            <div className="teacher-materials">
+              <h3>2. Supports fournis par l'enseignant</h3>
+
+              <div className="field">
+                <label>Texte / contenu du cours</label>
+                <textarea
+                  rows={7}
+                  value={courseText}
+                  onChange={(e) => setCourseText(e.target.value)}
+                  placeholder="Collez ici le texte, les consignes ou le contenu du cours..."
+                />
+              </div>
+
+              <div className="field">
+                <label>Images des activités</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => setActivityImages(Array.from(e.target.files ?? []))}
+                />
+                {activityImages.length > 0 && (
+                  <div className="hint">
+                    {activityImages.length} image(s) sélectionnée(s).
+                  </div>
+                )}
+              </div>
+
+              <div className="field">
+                <label>Instruction pour l'assistant</label>
+                <textarea
+                  rows={4}
+                  value={teacherInstruction}
+                  onChange={(e) => setTeacherInstruction(e.target.value)}
+                  placeholder="Exemple : génère les réponses attendues et ajoute les observations..."
+                />
+              </div>
+            </div>
+
             <div className="actions">
               <button
                 className="btn btn-primary"
-                disabled={!canGenerate}
+                disabled={!canGenerate || aiLoading}
                 onClick={generate}
               >
-                ✨ Préparer la séance
+                {aiLoading ? "⏳ Préparation en cours..." : "✨ Préparer la séance"}
               </button>
             </div>
 
+
+            {aiError && (
+              <div className="status">
+                ⚠️ {aiError}
+              </div>
+            )}
             {!canGenerate && (
               <div className="status">
                 Choisis une Learning Situation, une séquence, une leçon,

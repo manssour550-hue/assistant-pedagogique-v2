@@ -1417,6 +1417,8 @@ export const class6e = {
   learningSituations: curriculum6e
 };
 
+export const availableClasses = [class6e];
+
 export function getLearningSituation(id: string) {
   return curriculum6e.find((ls) => ls.id === id);
 }
