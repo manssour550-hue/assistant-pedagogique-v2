@@ -184,11 +184,18 @@ function App() {
     } catch (error) {
       console.error("Erreur lors de la génération :", error);
 
-      setAiError(
-        error instanceof Error
-          ? error.message
-          : "Une erreur est survenue lors de la préparation de la fiche."
-      );
+      const message = error instanceof Error ? error.message : "";
+
+      if (message.includes("503")) {
+        setAiError(
+          "Le service IA est temporairement très sollicité. Vos informations sont conservées. Veuillez réessayer dans quelques instants."
+        );
+      } else {
+        setAiError(
+          message ||
+            "Une erreur est survenue lors de la préparation de la fiche."
+        );
+      }
     } finally {
       setAiLoading(false);
     }
@@ -731,6 +738,15 @@ function App() {
             {aiError && (
               <div className="status">
                 ⚠️ {aiError}
+                <div style={{ marginTop: "10px" }}>
+                  <button
+                    className="btn btn-primary"
+                    disabled={aiLoading}
+                    onClick={generate}
+                  >
+                    🔄 Réessayer la génération
+                  </button>
+                </div>
               </div>
             )}
             {!canGenerate && (

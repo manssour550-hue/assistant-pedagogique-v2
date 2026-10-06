@@ -119,7 +119,15 @@ Règles :
       body: JSON.stringify({
         contents: [
           {
-            parts: [{ text: prompt }],
+            parts: [
+            { text: prompt },
+            ...request.activityImages.map((image) => ({
+              inline_data: {
+                mime_type: image.type,
+                data: image.dataUrl.split(",")[1],
+              },
+            })),
+          ],
           },
         ],
         generationConfig: {
