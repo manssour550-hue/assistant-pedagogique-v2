@@ -10,7 +10,7 @@ export class AIServiceError extends Error {
 export async function generateFiche(
   request: AIFicheRequest
 ): Promise<AIFicheResponse> {
-  const apiUrl = import.meta.env.VITE_AI_API_URL;
+  const apiUrl = import.meta.env.VITE_AI_API_URL || "/api/generate-fiche";
 
   if (!apiUrl) {
     throw new AIServiceError(

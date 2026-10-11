@@ -203,7 +203,32 @@ function App() {
 
 
   const printFiche = () => {
-    window.print();
+    const textareas = Array.from(
+      document.querySelectorAll<HTMLTextAreaElement>("#fiche textarea")
+    );
+
+    const previousStyles = textareas.map((textarea) => ({
+      textarea,
+      height: textarea.style.height,
+      overflow: textarea.style.overflow,
+    }));
+
+    textareas.forEach((textarea) => {
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight}px`;
+      textarea.style.overflow = "visible";
+    });
+
+    const restoreStyles = () => {
+      previousStyles.forEach(({ textarea, height, overflow }) => {
+        textarea.style.height = height;
+        textarea.style.overflow = overflow;
+      });
+      window.removeEventListener("afterprint", restoreStyles);
+    };
+
+    window.addEventListener("afterprint", restoreStyles);
+    window.setTimeout(() => window.print(), 100);
   };
 
 
@@ -507,6 +532,40 @@ function App() {
         @media print {
           body {
             background: white;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+
+          .process-wrapper {
+            overflow: visible !important;
+          }
+
+          .editable-cell {
+            display: block;
+            width: 100%;
+            min-height: 0;
+            height: auto;
+            overflow: visible;
+            resize: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            background: transparent;
+            color: #000;
+            font: inherit;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+          }
+
+          .process-table tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+
+          .process-table th,
+          .process-table td {
+            overflow-wrap: anywhere;
+            word-break: normal;
           }
 
           .no-print,
@@ -541,8 +600,8 @@ function App() {
           }
 
           @page {
-            size: A4 portrait;
-            margin: 10mm;
+            size: A4 landscape;
+            margin: 8mm;
           }
         }
       `}</style>

@@ -108,40 +108,76 @@ Règles :
 - Retourne uniquement les données correspondant au format demandé.
 `;
 
-  const response = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-            { text: prompt },
-            ...request.activityImages.map((image) => ({
-              inline_data: {
-                mime_type: image.type,
-                data: image.dataUrl.split(",")[1],
-              },
-            })),
-          ],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: ficheSchema,
-        },
-      }),
-    }
-  );
+  const maxAttempts = 3;
+  let response: Response | null = null;
+  let lastErrorText = "";
 
-  if (!response.ok) {
-    const errorText = await response.text();
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: prompt },
+                  ...request.activityImages.map((image) => ({
+                    inline_data: {
+                      mime_type: image.type,
+                      data: image.dataUrl.split(",")[1],
+                    },
+                  })),
+                ],
+              },
+            ],
+            generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: ficheSchema,
+            },
+          }),
+        }
+      );
+    } catch (error) {
+      lastErrorText = error instanceof Error ? error.message : String(error);
+      console.error(`Connexion Gemini échouée (tentative ${attempt}/${maxAttempts}) :`, lastErrorText);
+
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+        continue;
+      }
+
+      throw new Error(
+        `Connexion à Gemini impossible après ${maxAttempts} tentatives : ${lastErrorText}`
+      );
+    }
+
+    if (response.ok) break;
+
+    lastErrorText = await response.text();
+
+    if (response.status !== 503 && response.status !== 429) {
+      throw new Error(
+        `Erreur Gemini (${response.status}) : ${lastErrorText}`
+      );
+    }
+
+    if (attempt < maxAttempts) {
+      console.log(
+        `Gemini indisponible (${response.status}). Nouvelle tentative ${attempt + 1}/${maxAttempts}...`
+      );
+      await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+    }
+  }
+
+  if (!response || !response.ok) {
     throw new Error(
-      `Erreur Gemini (${response.status}) : ${errorText}`
+      `Erreur Gemini (${response?.status ?? "inconnue"}) : ${lastErrorText}`
     );
   }
 

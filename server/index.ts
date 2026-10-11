@@ -1,14 +1,33 @@
 import "dotenv/config";
 import { generateFicheWithGemini } from "./ai";
 import express from "express";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const distPath = path.resolve(__dirname, "../dist");
 
 app.use((_req, res, next) => {
-  res.header("Access-Control-Allow-Origin", _req.headers.origin === "http://127.0.0.1:5173" ? "http://127.0.0.1:5173" : (_req.headers.origin === "http://localhost:5174" ? "http://localhost:5174" : "http://localhost:5173"));
+  const origin = _req.headers.origin;
+  const allowedOrigins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:5175",
+  ];
+
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+
+  res.header("Vary", "Origin");
   res.header("Access-Control-Allow-Headers", "Content-Type");
   res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+
   if (_req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
@@ -50,6 +69,12 @@ app.post("/api/generate-fiche", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+app.use(express.static(distPath));
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/")) return next();
+  res.sendFile(path.join(distPath, "index.html"));
+});
+
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Backend démarré sur http://localhost:${PORT}`);
 });
